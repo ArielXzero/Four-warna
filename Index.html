@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Pilih Warna</title>
+<style>
+  * { 
+    margin: 0; 
+    padding: 0; 
+    box-sizing: border-box; 
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  html, body { 
+    height: 100%; 
+    width: 100%;
+    overflow: hidden;
+    background-color: #000;
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+
+  /* ---------- GRID 4 KOTAK (TANPA JARAK/BORDER) ---------- */
+  .grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: 1fr 1fr;
+    width: 100vw;
+    height: 100dvh;
+    gap: 0;      /* Menghilangkan jarak antar tombol */
+    padding: 0;  /* Menghilangkan bingkai pinggir layar */
+  }
+
+  .card {
+    position: relative;
+    border: none;
+    cursor: pointer;
+    display: grid;
+    place-items: center;
+    font-size: clamp(5rem, 22vmin, 12rem);
+    font-weight: 800;
+    letter-spacing: -0.03em;
+    transition: transform 0.2s cubic-bezier(0.2, 0.8, 0.3, 1.2), filter 0.2s ease;
+    background: radial-gradient(circle at 20% 20%, var(--c1), var(--c2));
+    /* Tidak ada shadow/border di dalam */
+  }
+
+  /* Membuat sudut luar tetap membulat, tapi sudut dalam tajam agar menyatu */
+  .card:nth-child(1) { border-radius: clamp(24px, 5vmin, 40px) 0 0 0; }
+  .card:nth-child(2) { border-radius: 0 clamp(24px, 5vmin, 40px) 0 0; }
+  .card:nth-child(3) { border-radius: 0 0 0 clamp(24px, 5vmin, 40px); }
+  .card:nth-child(4) { border-radius: 0 0 clamp(24px, 5vmin, 40px) 0; }
+
+  .card:hover {
+    filter: brightness(1.08); /* Sedikit lebih terang saat di-hover */
+  }
+
+  .card:active {
+    filter: brightness(0.9);
+  }
+
+  /* Warna & Teks Spesifik */
+  .card[data-label="A"] { --c1: #f87171; --c2: #dc2626; color: #fff; }
+  .card[data-label="B"] { --c1: #fde047; --c2: #eab308; color: #111; } /* Teks hitam untuk kuning */
+  .card[data-label="C"] { --c1: #4ade80; --c2: #16a34a; color: #fff; }
+  .card[data-label="D"] { --c1: #60a5fa; --c2: #2563eb; color: #fff; }
+
+  /* ---------- LAYAR FULL (OVERLAY) ---------- */
+  .overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 50;
+    display: grid;
+    place-items: center;
+    background: var(--bg, #ef4444);
+    opacity: 0;
+    pointer-events: none;
+    transform: scale(1.05);
+    transition: opacity 0.3s ease, transform 0.4s cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+
+  .overlay.show {
+    opacity: 1;
+    pointer-events: auto;
+    transform: scale(1);
+  }
+
+  /* Cahaya lembut di layar full */
+  .overlay::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.15), transparent 70%);
+    pointer-events: none;
+  }
+
+  .overlay-letter {
+    position: relative;
+    font-size: clamp(10rem, 45vmin, 24rem);
+    font-weight: 800;
+    line-height: 1;
+    color: rgba(255, 255, 255, 0.95);
+    text-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+    user-select: none;
+  }
+
+  .overlay.show .overlay-letter {
+    animation: pop 0.5s cubic-bezier(0.2, 0.9, 0.3, 1.2) both;
+  }
+
+  @keyframes pop {
+    from { transform: scale(0.7); opacity: 0; }
+    to   { transform: scale(1);   opacity: 1; }
+  }
+
+  /* Warna gelap untuk layar kuning */
+  .overlay.on-light .overlay-letter { color: rgba(0, 0, 0, 0.8); text-shadow: none; }
+
+  /* ---------- TOMBOL KEMBALI ---------- */
+  .back {
+    position: absolute;
+    top: max(24px, env(safe-area-inset-top));
+    left: max(24px, env(safe-area-inset-left));
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 14px 24px 14px 18px;
+    border-radius: 999px;
+    border: none;
+    background: rgba(255, 255, 255, 0.25);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    color: #fff;
+    font-family: inherit;
+    font-size: 1.1rem;
+    font-weight: 700;
+    cursor: pointer;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    transition: transform 0.2s, background 0.2s;
+  }
+
+  .back svg { width: 22px; height: 22px; }
+
+  .back:hover { background: rgba(255, 255, 255, 0.35); transform: translateX(-3px); }
+  .back:active { transform: scale(0.95); }
+
+  /* Gaya tombol back di layar terang (kuning) */
+  .overlay.on-light .back {
+    background: rgba(0, 0, 0, 0.15);
+    color: #111;
+    box-shadow: none;
+  }
+  .overlay.on-light .back:hover { background: rgba(0, 0, 0, 0.25); }
+
+  /* ---------- TOMBOL FULLSCREEN ---------- */
+  .fs-btn {
+    position: fixed;
+    top: max(24px, env(safe-area-inset-top));
+    right: max(24px, env(safe-area-inset-right));
+    width: 50px;
+    height: 50px;
+    display: grid;
+    place-items: center;
+    background: none;
+    border: none;
+    color: rgba(255, 255, 255, 0.4);
+    cursor: pointer;
+    z-index: 60;
+    transition: color 0.2s, transform 0.2s;
+  }
+
+  .fs-btn:hover  { color: #fff; transform: scale(1.1); }
+  .fs-btn:active { transform: scale(0.9); }
+  .fs-btn svg { width: 28px; height: 28px; }
+</style>
+</head>
+<body>
+
+  <!-- Tombol Fullscreen -->
+  <button class="fs-btn" id="fsBtn" aria-label="Layar penuh">
+    <svg id="fsIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M4 9V5.5A1.5 1.5 0 0 1 5.5 4H9"/>
+      <path d="M15 4h3.5A1.5 1.5 0 0 1 20 5.5V9"/>
+      <path d="M20 15v3.5a1.5 1.5 0 0 1-1.5 1.5H15"/>
+      <path d="M9 20H5.5A1.5 1.5 0 0 1 4 18.5V15"/>
+    </svg>
+  </button>
+
+  <!-- 4 Kotak Warna -->
+  <main class="grid">
+    <button class="card" data-color="#e74c3c" data-label="A">A</button>
+    <button class="card" data-color="#f1c40f" data-label="B" data-light="true">B</button>
+    <button class="card" data-color="#2ecc71" data-label="C">C</button>
+    <button class="card" data-color="#3498db" data-label="D">D</button>
+  </main>
+
+  <!-- Layar Full -->
+  <div class="overlay" id="overlay" aria-hidden="true">
+    <button class="back" id="backBtn">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M15 18l-6-6 6-6"/>
+      </svg>
+      Kembali
+    </button>
+    <span class="overlay-letter" id="overlayLetter">A</span>
+  </div>
+
+<script>
+  const overlay       = document.getElementById('overlay');
+  const overlayLetter = document.getElementById('overlayLetter');
+  const backBtn       = document.getElementById('backBtn');
+  const fsBtn         = document.getElementById('fsBtn');
+  const fsIcon        = document.getElementById('fsIcon');
+
+  // Logika klik kotak warna
+  document.querySelectorAll('.card').forEach(card => {
+    card.addEventListener('click', () => {
+      const color = card.dataset.color;
+      const label = card.dataset.label;
+      const isLight = card.dataset.light === 'true';
+
+      overlay.style.setProperty('--bg', color);
+      overlayLetter.textContent = label;
+      
+      if (isLight) {
+        overlay.classList.add('on-light');
+      } else {
+        overlay.classList.remove('on-light');
+      }
+
+      overlay.classList.add('show');
+      overlay.setAttribute('aria-hidden', 'false');
+    });
+  });
+
+  // Tutup layar full
+  function tutup() {
+    overlay.classList.remove('show');
+    overlay.setAttribute('aria-hidden', 'true');
+  }
+
+  backBtn.addEventListener('click', tutup);
+
+  // Tutup pakai tombol Escape
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape' && overlay.classList.contains('show')) tutup();
+  });
+
+  // Logika Fullscreen Browser
+  const ICON_BUKA = `<path d="M4 9V5.5A1.5 1.5 0 0 1 5.5 4H9"/>
+                     <path d="M15 4h3.5A1.5 1.5 0 0 1 20 5.5V9"/>
+                     <path d="M20 15v3.5a1.5 1.5 0 0 1-1.5 1.5H15"/>
+                     <path d="M9 20H5.5A1.5 1.5 0 0 1 4 18.5V15"/>`;
+  const ICON_TUTUP = `<path d="M9 4v3.5A1.5 1.5 0 0 1 7.5 9H4"/>
+                      <path d="M20 9h-3.5A1.5 1.5 0 0 1 15 7.5V4"/>
+                      <path d="M15 20v-3.5a1.5 1.5 0 0 1 1.5-1.5H20"/>
+                      <path d="M4 15h3.5A1.5 1.5 0 0 1 9 16.5V20"/>`;
+
+  fsBtn.addEventListener('click', async () => {
+    try {
+      if (!document.fullscreenElement) {
+        await document.documentElement.requestFullscreen();
+      } else {
+        await document.exitFullscreen();
+      }
+    } catch (err) {
+      console.warn('Fullscreen tidak didukung:', err);
+    }
+  });
+
+  document.addEventListener('fullscreenchange', () => {
+    fsIcon.innerHTML = document.fullscreenElement ? ICON_TUTUP : ICON_BUKA;
+  });
+</script>
+</body>
+</html>
